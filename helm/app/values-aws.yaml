@@ -1,2 +1,2 @@
 cloud: aws
-replicaCount: 2
+replicaCount: 3
