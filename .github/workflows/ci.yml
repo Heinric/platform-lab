@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  python:
+    name: Python - Lint & Tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: python/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Tests
+        run: pytest
+
+  terraform:
+    name: Terraform - Format & Validate
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        cloud: [aws, azure, gcp]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Format
+        run: terraform fmt -check -recursive terraform
+
+      - name: Init
+        working-directory: terraform/${{ matrix.cloud }}
+        run: terraform init -backend=false
+
+      - name: Validate
+        working-directory: terraform/${{ matrix.cloud }}
+        run: terraform validate
+
+  helm:
+    name: Helm - Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+
+      - name: Lint chart for each cloud
+        run: |
+          for cloud in aws azure gcp; do
+            helm lint helm/app -f helm/app/values-$cloud.yaml
+          done
